@@ -423,13 +423,16 @@ function initMap() {
   map = L.map('map', {center:[13.7,100.5], zoom:10, zoomControl:true, attributionControl:false});
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {maxZoom:19}).addTo(map);
 
-  fetch('https://raw.githubusercontent.com/apisit/bangkok.json/master/bangkok.json')
+  // Try to fetch Thailand GeoJSON (includes Bangkok)
+  fetch('https://raw.githubusercontent.com/apisit/thailand.json/master/thailand.json')
     .then(r => r.json())
     .then(data => {
+      // Filter for Bangkok provinces/districts if needed
       geojsonLayer = L.geoJSON(data, {
         style: styleFeature,
         onEachFeature: (feature, layer) => {
-          const name = feature.properties.name;
+          let name = feature.properties.name || feature.properties.NAME || 'Unknown';
+          // Try to match district names
           layerMap[name] = layer;
           layer.on({
             mouseover(e) {
@@ -446,7 +449,51 @@ function initMap() {
           });
         }
       }).addTo(map);
-      map.fitBounds(geojsonLayer.getBounds(), {padding:[20,20]});
+      
+      try {
+        map.fitBounds(geojsonLayer.getBounds(), {padding:[20,20]});
+      } catch(e) {
+        map.setView([13.7, 100.5], 10);
+      }
+      
+      renderRankings();
+      updateStats();
+    })
+    .catch(err => {
+      console.log('GeoJSON load error, using fallback:', err);
+      // Fallback: just show marker circles
+      allDistricts.forEach(name => {
+        const coords = {
+          "Phra Nakhon": [13.7563, 100.5018],
+          "Dusit": [13.8071, 100.5237],
+          "Bang Rak": [13.7214, 100.5304],
+          "Pathum Wan": [13.7465, 100.5372],
+          "Ratchathewi": [13.7600, 100.5414],
+          "Huai Khwang": [13.7904, 100.5678],
+          "Chatuchak": [13.8061, 100.5603],
+          "Samphanthawong": [13.7313, 100.5125],
+          "Khlong Toei": [13.6734, 100.5816],
+          "Bang Khae": [13.6412, 100.3846]
+        };
+        if (coords[name]) {
+          const circle = L.circleMarker(coords[name], {
+            radius: 15,
+            fillColor: '#1565c0',
+            color: '#58a6ff',
+            weight: 1,
+            opacity: 0.8,
+            fillOpacity: 0.5
+          }).addTo(map);
+          layerMap[name] = circle;
+          circle.on('mouseover', function() { 
+            circle.setStyle({weight:2, radius:20});
+            const pop = populations[name]||0;
+            circle.bindTooltip(`${name}<br/>👥 ${(pop/1000).toFixed(0)}k`).openTooltip();
+          });
+          circle.on('mouseout', () => circle.setStyle({weight:1, radius:15}));
+        }
+      });
+      map.setView([13.7, 100.5], 10);
       renderRankings();
       updateStats();
     });
