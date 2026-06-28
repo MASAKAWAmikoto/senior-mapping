@@ -1,50 +1,49 @@
-# 🗺️ Bangkok Live Population Heatmap (10M Edition)
+# 🗺️ Bangkok Live Population & GPS Map (10M Edition)
 
-Real-time Flask + Socket.IO app showing **all 50 Bangkok districts** with realistic **10 million person population** patterns. Includes **live clock** ⏰ and **time slider** ⏱️ to see population flows throughout the day.
+Real-time Flask + Socket.IO app showing **all 50 Bangkok districts**, locked to a **Bangkok-only map view**, with realistic **10 million person population** patterns, a **visible road network**, and **mock live GPS dots** moving along the streets. Includes a **live clock** ⏰ and **time slider** ⏱️ to see population flows throughout the day.
 
-## ✨ New Features
+## ✨ New in This Version
+
+### 📍 **Bangkok-Only Map**
+- Map is locked to a Bangkok bounding box (`maxBounds`) — you can't pan/zoom out into the rest of Thailand or the region
+- District GeoJSON is filtered to only the 50 official Bangkok khet (เขต) — no stray provinces rendered
+
+### 🛣️ **Visible Road Network**
+- Dark basemap tiles that render streets, not just blank polygons
+- ~15 major roads drawn as glowing overlay lines, including Sukhumvit, Silom, Rama IV, Phetchaburi, Ratchadaphisek, Vibhavadi Rangsit, Phahonyothin, Charoen Krung, Lat Phrao, Rama IX, Sathon, Bangna-Trad, Kanchanaphisek, and Ramkhamhaeng
+- Hover a road line to see its name
+
+### 🟢 **Mock Live GPS Tracking**
+- A background simulation generates ~180 "people" as GPS agents
+- Each agent travels back and forth along a real road, with its own speed and direction
+- Positions are pushed to the browser every second over WebSocket (`gps_tick` event)
+- Rendered as small green dots that visibly move along the streets in real time — a simple, self-contained stand-in for a real GPS feed
 
 ### 🕐 **Live Clock**
-- Shows current time in header
-- Updates every second
-- Thai time format (24-hour)
+- Shows current time in header, updates every second, 24-hour format
 
-### ⏰ **Time Slider (NEW!)**
-- Slide through 5am → 11pm
-- See realistic population for any time
-- **Districts peak at different hours**:
-  - **5am**: Temples, joggers → Phra Nakhon busy
-  - **7am**: BTS/MRT CHAOS → Pathum Wan explodes (1.2M people)
-  - **12pm**: Lunch peak → Restaurants/malls overflowing
-  - **5pm**: Evening rush → Traffic jams everywhere
-  - **9pm**: Night venues → Bang Rak (nightlife district) peaks
-  - **11pm**: Everything closes → Very quiet
-
-### 📍 **All 50 Districts**
-Including **Bang Khae** (บางแค) and **Samphanthawong** (สัมพันธวงศ์) now properly displayed!
+### ⏰ **Time Slider**
+- Slide through 5am → 11pm to see realistic population for any time
+- Districts peak at different hours (BTS rush, lunch rush, evening rush, nightlife, etc.)
 
 ### 💯 **10 Million Population**
-- Realistic Bangkok total (~10M people)
-- Scaled by district importance
-- Peak hours show 1.5M+ in CBD
+- Realistic Bangkok total (~10M people), scaled by district importance
+- Peak hours show 1.5M+ in the CBD
 - Color intensity matches actual crowd levels
 
 ## 🎮 How to Use
 
-### Stop Old Version
+### Install dependencies
 ```bash
-Ctrl + C  (in the terminal running the app)
+pip install -r requirements.txt
 ```
 
-### Replace File
-Download the new `bangkok_map_app.py` and copy to your folder
-
-### Run It
+### Run it
 ```bash
 python bangkok_map_app.py
 ```
 
-### Open Browser
+### Open browser
 ```
 http://localhost:5000
 ```
@@ -54,20 +53,18 @@ http://localhost:5000
 ## 📊 Three Tabs
 
 ### 📡 **Live Feed Tab**
-- Real-time events streaming in
-- Shows district, people count, action
-- Auto-scrolls newest events at top
+- Real-time events streaming in (district, people count, action)
+- Auto-scrolls newest events to the top
 
-### ⏰ **Time Tab (NEW!)**
-- **Slider**: Drag from 5am to 11pm
-- **Time Display**: Shows current slider hour
-- **Context**: Explains what's happening at that time
-- **Randomize Button**: 🎲 Generate data for selected time
+### ⏰ **Time Tab**
+- **Slider**: drag from 5am to 11pm
+- **Time Display**: shows current slider hour
+- **Context**: explains what's happening at that time
+- **Randomize Button**: 🎲 generate data for the selected time
 
 ### 🏆 **Rankings Tab**
 - Top 15 most crowded districts
-- Visual bars showing density
-- Updates live as population changes
+- Visual bars showing density, updates live as population changes
 
 ---
 
@@ -89,21 +86,21 @@ http://localhost:5000
 
 ## 🗺️ Key Districts
 
-### 🔴 **Peak During Rushes (1.2M-1.5M)**
+### 🔴 **Peak During Rushes (1.2M–1.5M)**
 - **Pathum Wan** (ปทุมวัน) — Siam, CentralWorld, CBD mega-mall
 - **Ratchathewi** (ราชเทวี) — Victory Monument, BTS hub
 - **Huai Khwang** (ห้วยขวาง) — Business area
 - **Bang Rak** (บางรัก) — Silom (nightlife + CBD)
 
-### 🟠 **Busy During Work (400k-800k)**
+### 🟠 **Busy During Work (400k–800k)**
 - **Khlong Toei** (คลองเตย) — Sukhumvit, shopping
 - **Chatuchak** (จตุจักร) — Massive weekend market
 - **Samphanthawong** (สัมพันธวงศ์) — Chinatown
 
-### 🟡 **Moderate (100k-400k)**
+### 🟡 **Moderate (100k–400k)**
 - **Dusit**, **Lak Si**, **Bang Na**, **Thung Khru**
 
-### 🔵 **Always Quiet (5k-50k)**
+### 🔵 **Always Quiet (5k–50k)**
 - **Outer residential** — Nong Khaem, Bang Khae, Phra Pradaeng
 
 ---
@@ -111,12 +108,11 @@ http://localhost:5000
 ## 💡 How to Test It
 
 1. **Open the app** → http://localhost:5000
-2. **Go to ⏰ Time tab**
-3. **Drag slider to 7:00** (morning rush)
-4. **Click "🎲 Randomize This Time"**
-5. **Watch map turn RED** — CBD districts explode with people! 🔥
-6. **Drag to 23:00** (late night)
-7. **Randomize again** → Map turns BLUE, everything quiet
+2. **Watch the green dots** drift along the road lines — that's the mock live GPS feed
+3. **Go to ⏰ Time tab**, drag slider to 7:00 (morning rush), click **"🎲 Randomize This Time"**
+4. **Watch the map turn RED** — CBD districts explode with people 🔥
+5. **Drag to 23:00** (late night), randomize again → map turns blue, everything quiet
+6. Try panning/zooming — the view stays locked to Bangkok
 
 ---
 
@@ -124,19 +120,20 @@ http://localhost:5000
 
 ### Stack
 - Flask + Flask-SocketIO
-- Leaflet.js maps
-- Real Bangkok GeoJSON data
+- Leaflet.js maps with a road-rendering dark basemap
+- Bangkok-filtered GeoJSON district boundaries
+- Background thread simulating ~180 GPS agents along real road polylines
 - Dark theme (GitHub-style)
 
-### Real Data
-- 50 Bangkok districts (all current)
-- GeoJSON boundaries from official sources
-- Population patterns based on actual Bangkok rush hour data
-- Time-based simulation realistic to Thailand traffic
+### Live GPS Simulation
+- 15 major Bangkok roads defined as waypoint polylines
+- Each agent is assigned a road, a position along it, a speed, and a direction
+- A server-side loop advances every agent each second and emits positions over WebSocket
+- This is **simulated** movement, not real device tracking — a realistic stand-in for wiring up an actual GPS/telemetry feed later
 
 ### Population Scaling
 - **Total**: ~10M people in Bangkok metro
-- **Morning rush**: 1.2-1.5M in transit/work
+- **Morning rush**: 1.2–1.5M in transit/work
 - **Late night**: 300k mostly sleeping
 - **Peak hours**: CBD concentrates 1M+ people
 
@@ -160,13 +157,13 @@ You get a live URL like `https://bangkok-map.onrender.com` 🌐
 
 ## ⚠️ Known Limits
 
-- Map loads from GeoJSON (internet required)
+- Map tiles and GeoJSON boundaries load from external sources (internet required)
 - WebSocket works in Chrome/Firefox/Safari
-- Simulated data (not real live tracking)
-- Population randomizes based on time patterns
+- GPS positions and population are simulated, not real live tracking
+- Population randomizes based on time-of-day patterns
 
 ---
 
-**Enjoy exploring Bangkok's 10M people!** 🚇🏙️🌃
+**Enjoy exploring Bangkok's 10M people — now street by street!** 🚇🏙️🌃
 
 Built with ❤️ for Bangkok urban data enthusiasts

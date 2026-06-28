@@ -42,6 +42,123 @@ THAI_NAMES = {
     "Phra Khanong": "พระโขนง", "Punnawithi": "พุทธมณฑล", "Yan Nawa": "ยานนาวา"
 }
 
+# --- Major Bangkok roads (approximate waypoints) used both to draw the road
+# network on the map and as "tracks" that mock GPS agents travel along ---
+ROADS = {
+    "Sukhumvit Rd": [
+        [13.7440, 100.5340], [13.7367, 100.5606], [13.7300, 100.5780],
+        [13.7100, 100.6050], [13.6950, 100.6300], [13.6700, 100.6700]
+    ],
+    "Silom Rd": [
+        [13.7287, 100.5345], [13.7245, 100.5290], [13.7200, 100.5230],
+        [13.7235, 100.5180]
+    ],
+    "Rama IV Rd": [
+        [13.7440, 100.5130], [13.7300, 100.5300], [13.7200, 100.5430],
+        [13.7050, 100.5600], [13.6950, 100.5750], [13.6920, 100.5800]
+    ],
+    "Phetchaburi Rd": [
+        [13.7530, 100.4980], [13.7540, 100.5300], [13.7555, 100.5600],
+        [13.7570, 100.5850], [13.7600, 100.6100]
+    ],
+    "Ratchadaphisek Rd": [
+        [13.7700, 100.5300], [13.7780, 100.5650], [13.7900, 100.5780],
+        [13.8050, 100.5750], [13.8200, 100.5700]
+    ],
+    "Vibhavadi Rangsit Rd": [
+        [13.7900, 100.5500], [13.8200, 100.5550], [13.8500, 100.5600],
+        [13.8800, 100.5650], [13.9100, 100.6050]
+    ],
+    "Phahonyothin Rd": [
+        [13.7980, 100.5560], [13.8200, 100.5610], [13.8450, 100.5650],
+        [13.8700, 100.6000], [13.9000, 100.6200]
+    ],
+    "Charoen Krung Rd": [
+        [13.7470, 100.5010], [13.7350, 100.5100], [13.7220, 100.5160],
+        [13.7050, 100.5120], [13.6920, 100.5080]
+    ],
+    "Lat Phrao Rd": [
+        [13.7950, 100.5700], [13.8050, 100.5950], [13.8150, 100.6200],
+        [13.8200, 100.6450]
+    ],
+    "Rama IX Rd": [
+        [13.7560, 100.5700], [13.7600, 100.5900], [13.7650, 100.6150],
+        [13.7700, 100.6400]
+    ],
+    "Sathon Rd": [
+        [13.7220, 100.5210], [13.7180, 100.5260], [13.7150, 100.5310],
+        [13.7090, 100.5380]
+    ],
+    "Bangna-Trad Rd": [
+        [13.6700, 100.6050], [13.6650, 100.6350], [13.6600, 100.6700],
+        [13.6550, 100.7050]
+    ],
+    "Chan Rd / Thonburi": [
+        [13.7050, 100.5050], [13.6950, 100.4950], [13.6800, 100.4850],
+        [13.6600, 100.4800]
+    ],
+    "Kanchanaphisek Rd (West)": [
+        [13.7900, 100.3400], [13.7500, 100.3500], [13.7100, 100.3650],
+        [13.6700, 100.3800], [13.6300, 100.4000]
+    ],
+    "Ramkhamhaeng Rd": [
+        [13.7550, 100.6100], [13.7650, 100.6400], [13.7750, 100.6700],
+        [13.7850, 100.7000]
+    ],
+}
+
+# Mock "live GPS" agents — each travels back and forth along one of the
+# roads above, so the map shows little dots moving on real streets.
+GPS_AGENTS = []
+def _init_gps_agents(n=180):
+    GPS_AGENTS.clear()
+    road_names = list(ROADS.keys())
+    for i in range(n):
+        road = random.choice(road_names)
+        pts = ROADS[road]
+        GPS_AGENTS.append({
+            "id": i,
+            "road": road,
+            "seg": random.randint(0, len(pts) - 2),
+            "t": random.random(),
+            "dir": random.choice([1, -1]),
+            "speed": random.uniform(0.01, 0.035),
+        })
+_init_gps_agents()
+
+def _lerp(a, b, t):
+    return a + (b - a) * t
+
+def step_gps_agents():
+    """Advance every mock GPS agent a little along its road and return positions."""
+    out = []
+    for ag in GPS_AGENTS:
+        pts = ROADS[ag["road"]]
+        ag["t"] += ag["speed"] * ag["dir"]
+        if ag["t"] >= 1.0:
+            ag["t"] = 0.0
+            ag["seg"] += ag["dir"]
+        elif ag["t"] <= 0.0:
+            ag["t"] = 1.0
+            ag["seg"] += ag["dir"]
+        if ag["seg"] >= len(pts) - 1:
+            ag["seg"] = len(pts) - 2
+            ag["dir"] = -1
+        elif ag["seg"] <= 0:
+            ag["seg"] = 0
+            ag["dir"] = 1
+        p0, p1 = pts[ag["seg"]], pts[ag["seg"] + 1]
+        lat = _lerp(p0[0], p1[0], ag["t"])
+        lng = _lerp(p0[1], p1[1], ag["t"])
+        out.append({"id": ag["id"], "lat": round(lat, 6), "lng": round(lng, 6)})
+    return out
+
+def mock_gps_feed():
+    """Background thread: pushes simulated live GPS pings every second."""
+    while True:
+        time.sleep(1.0)
+        socketio.emit('gps_tick', {"agents": step_gps_agents()})
+
 # Initial seed — scaled to 10M total population
 populations = {d: 0 for d in DISTRICTS}
 populations["Pathum Wan"] = 450000  # CBD peak
@@ -182,7 +299,9 @@ def index():
     return render_template_string(HTML,
         thai_names=json.dumps(THAI_NAMES, ensure_ascii=False),
         init_populations=json.dumps(populations, ensure_ascii=False),
-        time_options=time_options
+        time_options=time_options,
+        roads_json=json.dumps(ROADS, ensure_ascii=False),
+        district_names_json=json.dumps(DISTRICTS, ensure_ascii=False)
     )
 
 @app.route('/api/randomize', methods=['POST'])
@@ -264,6 +383,7 @@ header h1{font-size:1rem;font-weight:700;background:linear-gradient(90deg,#58a6f
       <span>Empty</span>
       <div class="legend-bar"></div>
       <span>Crowded</span>
+      <span style="margin-left:10px;color:#39ff88">●</span><span>Live GPS</span>
     </div>
     <div class="live-badge"><div class="pulse"></div>LIVE</div>
   </div>
@@ -317,9 +437,13 @@ header h1{font-size:1rem;font-weight:700;background:linear-gradient(90deg,#58a6f
 const THAI_NAMES = {{ thai_names | safe }};
 const initPops = {{ init_populations | safe }};
 const TIME_PATTERNS_LIST = {{ time_options | safe }};
+const ROADS = {{ roads_json | safe }};
+const BKK_DISTRICT_NAMES = {{ district_names_json | safe }};
+const BKK_BOUNDS = [[13.49, 100.32], [13.96, 100.94]]; // tight Bangkok-only bbox
 
 let populations = {...initPops};
 let map, geojsonLayer, layerMap = {};
+let gpsLayer, gpsMarkers = {};
 let selectedDistrict = null;
 let eventCount = 0, eventsLastMin = 0;
 const allDistricts = Object.keys(THAI_NAMES).sort();
@@ -341,6 +465,10 @@ socket.on('population_update', data => {
   addFeedItem(data);
   renderRankings();
   updateStats();
+});
+
+socket.on('gps_tick', data => {
+  updateGpsAgents(data.agents);
 });
 
 // Live Clock
@@ -419,20 +547,82 @@ function styleFeature(f) {
   return {fillColor:c.fill, fillOpacity:c.opacity, color:'#58a6ff', weight:1.2, opacity:0.7};
 }
 
-function initMap() {
-  map = L.map('map', {center:[13.7,100.5], zoom:10, zoomControl:true, attributionControl:false});
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {maxZoom:19}).addTo(map);
+function drawRoads() {
+  Object.entries(ROADS).forEach(([name, pts]) => {
+    L.polyline(pts, {
+      color: '#ffd54f',
+      weight: 2,
+      opacity: 0.55,
+      dashArray: '1,0'
+    }).addTo(map).bindTooltip(name, {sticky:true, className:'tooltip-custom'});
+  });
+}
 
-  // Try to fetch Thailand GeoJSON (includes Bangkok)
+function initGpsLayer() {
+  gpsLayer = L.layerGroup().addTo(map);
+}
+
+function updateGpsAgents(agents) {
+  if (!gpsLayer) return;
+  agents.forEach(a => {
+    let m = gpsMarkers[a.id];
+    if (!m) {
+      m = L.circleMarker([a.lat, a.lng], {
+        radius: 3, color: '#39ff88', fillColor: '#39ff88',
+        fillOpacity: 0.95, weight: 1, opacity: 0.9, renderer: gpsRenderer
+      }).addTo(gpsLayer);
+      gpsMarkers[a.id] = m;
+    } else {
+      m.setLatLng([a.lat, a.lng]);
+    }
+  });
+}
+
+let gpsRenderer;
+
+function initMap() {
+  map = L.map('map', {
+    center: [13.735, 100.55],
+    zoom: 11,
+    minZoom: 10,
+    maxZoom: 17,
+    zoomControl: true,
+    attributionControl: false,
+    maxBounds: BKK_BOUNDS,
+    maxBoundsViscosity: 1.0
+  });
+
+  // Road-visible dark basemap (CartoDB dark_all renders the street network)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+    bounds: BKK_BOUNDS
+  }).addTo(map);
+
+  gpsRenderer = L.canvas({padding: 0.5});
+  drawRoads();
+  initGpsLayer();
+
+  // Fetch country-level GeoJSON but KEEP ONLY Bangkok's districts so the
+  // rest of Thailand never renders.
   fetch('https://raw.githubusercontent.com/apisit/thailand.json/master/thailand.json')
     .then(r => r.json())
     .then(data => {
-      // Filter for Bangkok provinces/districts if needed
-      geojsonLayer = L.geoJSON(data, {
+      const bkkOnly = {
+        type: 'FeatureCollection',
+        features: (data.features || []).filter(f => {
+          const n = f.properties.name || f.properties.NAME || '';
+          return BKK_DISTRICT_NAMES.includes(n);
+        })
+      };
+
+      if (bkkOnly.features.length === 0) {
+        throw new Error('No Bangkok features matched — using fallback markers');
+      }
+
+      geojsonLayer = L.geoJSON(bkkOnly, {
         style: styleFeature,
         onEachFeature: (feature, layer) => {
           let name = feature.properties.name || feature.properties.NAME || 'Unknown';
-          // Try to match district names
           layerMap[name] = layer;
           layer.on({
             mouseover(e) {
@@ -449,19 +639,16 @@ function initMap() {
           });
         }
       }).addTo(map);
-      
-      try {
-        map.fitBounds(geojsonLayer.getBounds(), {padding:[20,20]});
-      } catch(e) {
-        map.setView([13.7, 100.5], 10);
-      }
-      
+
+      map.setMaxBounds(BKK_BOUNDS);
+      map.setView([13.735, 100.55], 11);
+
       renderRankings();
       updateStats();
     })
     .catch(err => {
       console.log('GeoJSON load error, using fallback:', err);
-      // Fallback: just show marker circles
+      // Fallback: marker circles for the well-known central districts
       allDistricts.forEach(name => {
         const coords = {
           "Phra Nakhon": [13.7563, 100.5018],
@@ -493,7 +680,7 @@ function initMap() {
           circle.on('mouseout', () => circle.setStyle({weight:1, radius:15}));
         }
       });
-      map.setView([13.7, 100.5], 10);
+      map.setView([13.735, 100.55], 11);
       renderRankings();
       updateStats();
     });
@@ -571,6 +758,8 @@ initMap();
 if __name__ == '__main__':
     t = threading.Thread(target=mock_live_feed, daemon=True)
     t.start()
+    t2 = threading.Thread(target=mock_gps_feed, daemon=True)
+    t2.start()
     print("\n🗺️  Bangkok Live Population (10M) running!")
     print("👉  Open: http://localhost:5000\n")
     socketio.run(app, debug=False, port=5000, allow_unsafe_werkzeug=True)
